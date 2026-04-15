@@ -1,0 +1,19 @@
+# Ignore dependencies
+**/node_modules/
+**/dist/
+**/build/
+**/frontend/node_modules/
+**/frontend/dist/
+**/frontend/build/
+**/backend/node_modules/
+**/backend/dist/
+**/backend/build/
+**/backend/.venv/
+**/backend/venv/
+
+# Ignore secrets
+**/.env
+
+# OS files
+.DS_Store
+Thumbs.db
