@@ -33,6 +33,7 @@ router.register(r'contact_us', views2.contact_usView, 'contact_us')
 urlpatterns = [
     path('admin/', admin.site.urls),   
     path('api/', include(router.urls)),     
+    path('api/builder/', include('app0.builder.urls')),
     path('accounts/', include('accounts.urls')),      
     # path('recommendMB/', views4.returnMotherboard),      
     # path('recommendGPU/', views4.returnGPU),      

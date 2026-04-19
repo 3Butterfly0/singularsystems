@@ -50,3 +50,13 @@ class caseSerializer(serializers.ModelSerializer):
     class Meta:
         model = case
         fields = ('id', 'wattage', 'name', 'price', 'description', 'image')
+
+from .models import BuildSession
+
+class BuildSessionSerializer(serializers.ModelSerializer):
+    estimated_watts = serializers.ReadOnlyField()
+    total_price = serializers.ReadOnlyField()
+
+    class Meta:
+        model = BuildSession
+        exclude = ('session_secret',)

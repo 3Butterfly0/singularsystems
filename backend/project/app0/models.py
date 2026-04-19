@@ -148,7 +148,7 @@ class BuildSession(models.Model):
         if cpu: total += cpu.wattage
         mb = self.intel_motherboard if self.platform == 'intel' else self.amd_motherboard
         if mb: total += mb.wattage
-        for comp in [self.ram, self.gpu, self.cooler, self.storage, self.psu, self.case]:
+        for comp in [self.ram, self.gpu, self.cooler, self.storage, self.case]:
             if comp: total += comp.wattage
         return total
 
