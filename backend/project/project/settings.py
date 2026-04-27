@@ -58,8 +58,14 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+from corsheaders.defaults import default_headers
+
 CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOWED_ORIGINS = [o.strip() for o in os.environ.get('CORS_ALLOWED_ORIGINS', '').split(',') if o.strip()]
+
+CORS_ALLOW_HEADERS = list(default_headers) + [
+    "x-build-session-secret",
+]
 
 ROOT_URLCONF = 'project.urls'
 

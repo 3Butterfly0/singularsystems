@@ -57,10 +57,20 @@ class caseSerializer(serializers.ModelSerializer):
 class BuildSessionSerializer(serializers.ModelSerializer):
     estimated_watts = serializers.ReadOnlyField()
     total_price = serializers.ReadOnlyField()
+    is_compatible = serializers.SerializerMethodField()
+    compatibility_notes = serializers.SerializerMethodField()
 
     class Meta:
         model = BuildSession
         exclude = ('session_secret',)
+        depth = 1
+
+    def get_compatibility_notes(self, obj):
+        from .builder.compatibility import CompatibilityEngine
+        return CompatibilityEngine.get_validation_errors(obj)
+
+    def get_is_compatible(self, obj):
+        return len(self.get_compatibility_notes(obj)) == 0
 
 class PrebuiltPCSerializer(serializers.ModelSerializer):
     total_price = serializers.ReadOnlyField()
@@ -69,6 +79,7 @@ class PrebuiltPCSerializer(serializers.ModelSerializer):
     intel_cpu_name = serializers.CharField(source='intel_cpu.name', read_only=True)
     amd_cpu_name = serializers.CharField(source='amd_cpu.name', read_only=True)
     gpu_name = serializers.CharField(source='gpu.name', read_only=True)
+    ram_name = serializers.CharField(source='ram.name', read_only=True)
 
     class Meta:
         model = PrebuiltPC

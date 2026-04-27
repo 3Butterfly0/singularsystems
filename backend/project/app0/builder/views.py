@@ -64,6 +64,15 @@ class BuildSessionCreateView(views.APIView):
             {"detail": "Not authenticated"}, status=status.HTTP_401_UNAUTHORIZED
         )
 
+class BuildSessionDetailView(views.APIView):
+    def get(self, request, pk):
+        session = get_object_or_404(BuildSession, pk=pk)
+        if not check_session_auth(request, session):
+            return Response(
+                {"error": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED
+            )
+        return Response(BuildSessionSerializer(session).data)
+
 
 class BuildSessionOptionsView(views.APIView):
     def get(self, request, pk):
@@ -95,6 +104,8 @@ class BuildSessionOptionsView(views.APIView):
                             "price": r["item"].price,
                             "type": "intelCPU",
                             "is_recommended": r["is_recommended"],
+                            "image": request.build_absolute_uri(r["item"].image.url) if r["item"].image else None,
+                            "brand": r["item"].__class__.__name__.replace("intel", "Intel ").replace("amd", "AMD ").title(),
                         }
                         for r in recs
                     ]
@@ -111,6 +122,8 @@ class BuildSessionOptionsView(views.APIView):
                             "price": r["item"].price,
                             "type": "amdCPU",
                             "is_recommended": r["is_recommended"],
+                            "image": request.build_absolute_uri(r["item"].image.url) if r["item"].image else None,
+                            "brand": r["item"].__class__.__name__.replace("intel", "Intel ").replace("amd", "AMD ").title(),
                         }
                         for r in recs
                     ]
@@ -130,6 +143,8 @@ class BuildSessionOptionsView(views.APIView):
                             "price": r["item"].price,
                             "type": "intelMotherboard",
                             "is_recommended": r["is_recommended"],
+                            "image": request.build_absolute_uri(r["item"].image.url) if r["item"].image else None,
+                            "brand": r["item"].__class__.__name__.replace("intel", "Intel ").replace("amd", "AMD ").title(),
                         }
                         for r in recs
                     ]
@@ -146,6 +161,8 @@ class BuildSessionOptionsView(views.APIView):
                             "price": r["item"].price,
                             "type": "amdMotherboard",
                             "is_recommended": r["is_recommended"],
+                            "image": request.build_absolute_uri(r["item"].image.url) if r["item"].image else None,
+                            "brand": r["item"].__class__.__name__.replace("intel", "Intel ").replace("amd", "AMD ").title(),
                         }
                         for r in recs
                     ]
@@ -161,6 +178,8 @@ class BuildSessionOptionsView(views.APIView):
                     "price": r["item"].price,
                     "type": "ram",
                     "is_recommended": r["is_recommended"],
+                            "image": request.build_absolute_uri(r["item"].image.url) if r["item"].image else None,
+                            "brand": r["item"].__class__.__name__.replace("intel", "Intel ").replace("amd", "AMD ").title(),
                 }
                 for r in recs
             ]
@@ -175,6 +194,8 @@ class BuildSessionOptionsView(views.APIView):
                     "price": r["item"].price,
                     "type": "psu",
                     "is_recommended": r["is_recommended"],
+                            "image": request.build_absolute_uri(r["item"].image.url) if r["item"].image else None,
+                            "brand": r["item"].__class__.__name__.replace("intel", "Intel ").replace("amd", "AMD ").title(),
                 }
                 for r in recs
             ]
@@ -198,6 +219,8 @@ class BuildSessionOptionsView(views.APIView):
                     "price": r["item"].price,
                     "type": component_type,
                     "is_recommended": r["is_recommended"],
+                            "image": request.build_absolute_uri(r["item"].image.url) if r["item"].image else None,
+                            "brand": r["item"].__class__.__name__.replace("intel", "Intel ").replace("amd", "AMD ").title(),
                 }
                 for r in recs
             ]
@@ -219,7 +242,7 @@ class PrebuiltPCListView(views.APIView):
         if category:
             qs = qs.filter(category=category)
 
-        serializer = PrebuiltPCSerializer(qs, many=True)
+        serializer = PrebuiltPCSerializer(qs, many=True, context={'request': request})
         return Response(serializer.data)
 
 
@@ -234,6 +257,17 @@ class BuildSessionSelectionView(views.APIView):
         comp_type = request.data.get("component_type")
         comp_id = request.data.get("component_id")
         action = request.data.get("action", "add")
+        platform = request.data.get("platform")
+
+        if platform:
+            if platform in ["intel", "amd"]:
+                session.platform = platform
+                purpose = request.data.get("purpose")
+                if purpose:
+                    session.purpose = purpose
+                session.save()
+                return Response(BuildSessionSerializer(session).data)
+            return Response({"error": "Invalid platform"}, status=status.HTTP_400_BAD_REQUEST)
 
         models_map = {
             "intelCPU": (intelCPU, "intel_cpu"),
@@ -260,16 +294,53 @@ class BuildSessionSelectionView(views.APIView):
             session.save()
             return Response(BuildSessionSerializer(session).data)
 
-        elif action == "add":
+        if action == "add":
             comp = get_object_or_404(ModelClass, pk=comp_id)
             setattr(session, field_name, comp)
 
-            if comp_type in ["intelCPU", "intelMotherboard"]:
-                session.platform = "intel"
-            elif comp_type in ["amdCPU", "amdMotherboard"]:
-                session.platform = "amd"
+            # Cascade Clearing: If a foundational part is changed, clear downstream for safety
+            if comp_type in ["intelCPU", "amdCPU"]:
+                session.intel_motherboard = None
+                session.amd_motherboard = None
+                session.ram = None
+                session.platform = "intel" if "intel" in comp_type else "amd"
+            
+            elif comp_type in ["intelMotherboard", "amdMotherboard"]:
+                session.ram = None
+                session.platform = "intel" if "intel" in comp_type else "amd"
 
             session.save()
+
+            # clear downstream components if they become incompatible
+            errors = CompatibilityEngine.get_validation_errors(session)
+            if errors:
+                changed = False
+                for err in errors:
+                    if "Incompatible Socket" in err:
+                        if comp_type in ["intelCPU", "amdCPU"]:
+                            session.intel_motherboard = None
+                            session.amd_motherboard = None
+                        else:
+                            session.intel_cpu = None
+                            session.amd_cpu = None
+                        changed = True
+                    
+                    if "Incompatible RAM" in err:
+                        if comp_type == "ram":
+                            session.intel_motherboard = None
+                            session.amd_motherboard = None
+                        else:
+                            session.ram = None
+                        changed = True
+                        
+                    if "Insufficient Power" in err:
+                        if comp_type != "psu":
+                            session.psu = None
+                            changed = True
+                
+                if changed:
+                    session.save()
+
             return Response(BuildSessionSerializer(session).data)
 
         return Response({"error": "Invalid action"}, status=status.HTTP_400_BAD_REQUEST)

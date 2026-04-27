@@ -32,5 +32,5 @@ urlpatterns = [
     path('admin/', admin.site.urls),   
     path('api/', include(router.urls)),     
     path('api/builder/', include('app0.builder.urls')),
-    path('accounts/', include('accounts.urls')),      
+    path('api/accounts/', include('accounts.urls')),      
 ]

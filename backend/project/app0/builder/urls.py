@@ -1,8 +1,9 @@
 from django.urls import path
-from .views import BuildSessionCreateView, BuildSessionOptionsView, BuildSessionSelectionView, BuildSessionValidateView, BuildSessionProceedToBuyView, PrebuiltPCListView
+from .views import BuildSessionCreateView, BuildSessionDetailView, BuildSessionOptionsView, BuildSessionSelectionView, BuildSessionValidateView, BuildSessionProceedToBuyView, PrebuiltPCListView
 
 urlpatterns = [
     path('session/', BuildSessionCreateView.as_view(), name='builder-session'),
+    path('session/<uuid:pk>/', BuildSessionDetailView.as_view(), name='builder-session-detail'),
     path('session/<uuid:pk>/options/', BuildSessionOptionsView.as_view(), name='builder-options'),
     path('session/<uuid:pk>/select/', BuildSessionSelectionView.as_view(), name='builder-select'),
     path('session/<uuid:pk>/validate/', BuildSessionValidateView.as_view(), name='builder-validate'),

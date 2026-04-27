@@ -141,6 +141,7 @@ class BuildSession(models.Model):
         null=True,
         blank=True,
     )
+    purpose = models.CharField(max_length=50, null=True, blank=True)
     session_secret = models.CharField(max_length=128, null=True, blank=True)
     status = models.CharField(
         max_length=50,
