@@ -1,44 +1,49 @@
 from django.shortcuts import render
-from .serializers import intelCPUSerializer, intelMotherboardSerializer, amdCPUSerializer, amdMotherboardSerializer, coolerSerializer, ramSerializer, storageSerializer, gpuSerializer, psuSerializer, caseSerializer
-from rest_framework import viewsets  
-from .models import intelCPU, intelMotherboard, amdCPU, amdMotherboard, cooler, ram, storage, gpu, psu, case
+from .serializers import CPUSerializer, MotherboardSerializer, CoolerSerializer, RamSerializer, StorageSerializer, GpuSerializer, PsuSerializer, CaseSerializer
+from rest_framework import viewsets, permissions
+from .models import CPU, Motherboard, Cooler, Ram, Storage, Gpu, Psu, Case
 
-class intelCPUView(viewsets.ModelViewSet):
-    serializer_class = intelCPUSerializer
-    queryset = intelCPU.objects.all()
+class IsAdminUserOrReadOnly(permissions.IsAdminUser):
+    def has_permission(self, request, view):
+        is_admin = super().has_permission(request, view)
+        return request.method in permissions.SAFE_METHODS or is_admin
 
-class intelMotherboardView(viewsets.ModelViewSet):
-    serializer_class = intelMotherboardSerializer
-    queryset = intelMotherboard.objects.all()
+class CPUView(viewsets.ModelViewSet):
+    serializer_class = CPUSerializer
+    queryset = CPU.objects.all()
+    permission_classes = [IsAdminUserOrReadOnly]
 
-class amdCPUView(viewsets.ModelViewSet):
-    serializer_class = amdCPUSerializer
-    queryset = amdCPU.objects.all()
+class MotherboardView(viewsets.ModelViewSet):
+    serializer_class = MotherboardSerializer
+    queryset = Motherboard.objects.all()
+    permission_classes = [IsAdminUserOrReadOnly]
 
-class amdMotherboardView(viewsets.ModelViewSet):
-    serializer_class = amdMotherboardSerializer
-    queryset = amdMotherboard.objects.all()
+class CoolerView(viewsets.ModelViewSet):
+    serializer_class = CoolerSerializer
+    queryset = Cooler.objects.all()
+    permission_classes = [IsAdminUserOrReadOnly]
 
-class coolerView(viewsets.ModelViewSet):
-    serializer_class = coolerSerializer
-    queryset = cooler.objects.all()
+class RamView(viewsets.ModelViewSet):
+    serializer_class = RamSerializer
+    queryset = Ram.objects.all()
+    permission_classes = [IsAdminUserOrReadOnly]
 
-class ramView(viewsets.ModelViewSet):
-    serializer_class = ramSerializer
-    queryset = ram.objects.all()
+class StorageView(viewsets.ModelViewSet):
+    serializer_class = StorageSerializer
+    queryset = Storage.objects.all()
+    permission_classes = [IsAdminUserOrReadOnly]
 
-class storageView(viewsets.ModelViewSet):
-    serializer_class = storageSerializer
-    queryset = storage.objects.all()
+class GpuView(viewsets.ModelViewSet):
+    serializer_class = GpuSerializer
+    queryset = Gpu.objects.all()
+    permission_classes = [IsAdminUserOrReadOnly]
 
-class gpuView(viewsets.ModelViewSet):
-    serializer_class = gpuSerializer
-    queryset = gpu.objects.all()
+class PsuView(viewsets.ModelViewSet):
+    serializer_class = PsuSerializer
+    queryset = Psu.objects.all()
+    permission_classes = [IsAdminUserOrReadOnly]
 
-class psuView(viewsets.ModelViewSet):
-    serializer_class = psuSerializer
-    queryset = psu.objects.all()
-
-class caseView(viewsets.ModelViewSet):
-    serializer_class = caseSerializer
-    queryset = case.objects.all()
+class CaseView(viewsets.ModelViewSet):
+    serializer_class = CaseSerializer
+    queryset = Case.objects.all()
+    permission_classes = [IsAdminUserOrReadOnly]

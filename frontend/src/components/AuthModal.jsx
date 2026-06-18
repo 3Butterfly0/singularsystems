@@ -5,7 +5,7 @@ import useAuthStore from '../store/useAuthStore';
 
 const AuthModal = ({ isOpen, onClose }) => {
   const [isLogin, setIsLogin] = useState(true);
-  const [formData, setFormData] = useState({ email: '', password: '', username: '' });
+  const [formData, setFormData] = useState({ email: '', password: '', first_name: '', last_name: '' });
   const { login, signup, loading, error } = useAuthStore();
 
   const handleSubmit = async (e) => {
@@ -51,18 +51,34 @@ const AuthModal = ({ isOpen, onClose }) => {
           <div className="p-8">
             <form onSubmit={handleSubmit} className="space-y-5">
               {!isLogin && (
-                <div className="space-y-2">
-                  <label className="text-xs font-black uppercase tracking-widest text-gray-400">Username</label>
-                  <div className="relative">
-                    <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-300" />
-                    <input 
-                      type="text"
-                      required
-                      placeholder="john_doe"
-                      className="w-full bg-gray-50 border border-gray-100 py-4 pl-12 pr-4 rounded-xl focus:ring-2 focus:ring-[#9E00FF] outline-none transition-all font-medium"
-                      value={formData.username}
-                      onChange={(e) => setFormData({...formData, username: e.target.value})}
-                    />
+                <div className="flex gap-4">
+                  <div className="space-y-2 flex-1">
+                    <label className="text-xs font-black uppercase tracking-widest text-gray-400">First Name</label>
+                    <div className="relative">
+                      <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-300" />
+                      <input 
+                        type="text"
+                        required
+                        placeholder="John"
+                        className="w-full bg-gray-50 border border-gray-100 py-4 pl-12 pr-4 rounded-xl focus:ring-2 focus:ring-[#9E00FF] outline-none transition-all font-medium"
+                        value={formData.first_name}
+                        onChange={(e) => setFormData({...formData, first_name: e.target.value})}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2 flex-1">
+                    <label className="text-xs font-black uppercase tracking-widest text-gray-400">Last Name</label>
+                    <div className="relative">
+                      <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-300" />
+                      <input 
+                        type="text"
+                        required
+                        placeholder="Doe"
+                        className="w-full bg-gray-50 border border-gray-100 py-4 pl-12 pr-4 rounded-xl focus:ring-2 focus:ring-[#9E00FF] outline-none transition-all font-medium"
+                        value={formData.last_name}
+                        onChange={(e) => setFormData({...formData, last_name: e.target.value})}
+                      />
+                    </div>
                   </div>
                 </div>
               )}

@@ -1,57 +1,47 @@
 from rest_framework import serializers
 from .models import (
-    intelCPU, intelMotherboard, amdCPU, amdMotherboard, 
-    cooler, ram, storage, gpu, psu, case, BuildSession, PrebuiltPC
+    CPU, Motherboard,
+    Cooler, Ram, Storage, Gpu, Psu, Case, BuildSession, PrebuiltPC
 )
 
-class intelCPUSerializer(serializers.ModelSerializer):
+class CPUSerializer(serializers.ModelSerializer):
     class Meta:
-        model = intelCPU
-        fields = ('id', 'wattage', 'name', 'price', 'description', 'image', 'socket')
+        model = CPU
+        fields = ('id', 'platform', 'wattage', 'name', 'price', 'description', 'image', 'socket')
 
-class intelMotherboardSerializer(serializers.ModelSerializer):
+class MotherboardSerializer(serializers.ModelSerializer):
     class Meta:
-        model = intelMotherboard
-        fields = ('id', 'wattage', 'name', 'price', 'description', 'image', 'socket', 'ram_type')
-
-class amdCPUSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = amdCPU
-        fields = ('id', 'wattage', 'name', 'price', 'description', 'image', 'socket')
+        model = Motherboard
+        fields = ('id', 'platform', 'wattage', 'name', 'price', 'description', 'image', 'socket', 'ram_type', 'form_factor')
     
-class amdMotherboardSerializer(serializers.ModelSerializer):
+class CoolerSerializer(serializers.ModelSerializer):
     class Meta:
-        model = amdMotherboard
-        fields = ('id', 'wattage', 'name', 'price', 'description', 'image', 'socket', 'ram_type')
-    
-class coolerSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = cooler
+        model = Cooler
         fields = ('id', 'wattage', 'name', 'price', 'description', 'image')
 
-class ramSerializer(serializers.ModelSerializer):
+class RamSerializer(serializers.ModelSerializer):
     class Meta:
-        model = ram
+        model = Ram
         fields = ('id', 'wattage', 'name', 'price', 'description', 'image', 'ram_type')
 
-class storageSerializer(serializers.ModelSerializer):
+class StorageSerializer(serializers.ModelSerializer):
     class Meta:
-        model = storage
+        model = Storage
         fields = ('id', 'wattage', 'name', 'price', 'description', 'image')
 
-class gpuSerializer(serializers.ModelSerializer):
+class GpuSerializer(serializers.ModelSerializer):
     class Meta:
-        model = gpu
+        model = Gpu
         fields = ('id', 'wattage', 'name', 'price', 'description', 'image')
 
-class psuSerializer(serializers.ModelSerializer):
+class PsuSerializer(serializers.ModelSerializer):
     class Meta:
-        model = psu
+        model = Psu
         fields = ('id', 'wattage', 'name', 'price', 'description', 'image')
 
-class caseSerializer(serializers.ModelSerializer):
+class CaseSerializer(serializers.ModelSerializer):
     class Meta:
-        model = case
+        model = Case
         fields = ('id', 'wattage', 'name', 'price', 'description', 'image')
 
 class BuildSessionSerializer(serializers.ModelSerializer):
@@ -60,10 +50,25 @@ class BuildSessionSerializer(serializers.ModelSerializer):
     is_compatible = serializers.SerializerMethodField()
     compatibility_notes = serializers.SerializerMethodField()
 
+    cpu = CPUSerializer(read_only=True)
+    motherboard = MotherboardSerializer(read_only=True)
+    cooler = CoolerSerializer(read_only=True)
+    ram = RamSerializer(read_only=True)
+    storage = StorageSerializer(read_only=True)
+    gpu = GpuSerializer(read_only=True)
+    psu = PsuSerializer(read_only=True)
+    case = CaseSerializer(read_only=True)
+    
+    user = serializers.SerializerMethodField()
+
     class Meta:
         model = BuildSession
         exclude = ('session_secret',)
-        depth = 1
+
+    def get_user(self, obj):
+        if obj.user:
+            return {"id": obj.user.id, "username": obj.user.username, "first_name": obj.user.first_name, "last_name": obj.user.last_name}
+        return None
 
     def get_compatibility_notes(self, obj):
         from .builder.compatibility import CompatibilityEngine
@@ -76,11 +81,12 @@ class PrebuiltPCSerializer(serializers.ModelSerializer):
     total_price = serializers.ReadOnlyField()
     
     # return id and name of components
-    intel_cpu_name = serializers.CharField(source='intel_cpu.name', read_only=True)
-    amd_cpu_name = serializers.CharField(source='amd_cpu.name', read_only=True)
+    cpu_name = serializers.CharField(source='cpu.name', read_only=True)
+    motherboard_name = serializers.CharField(source='motherboard.name', read_only=True)
     gpu_name = serializers.CharField(source='gpu.name', read_only=True)
     ram_name = serializers.CharField(source='ram.name', read_only=True)
 
     class Meta:
         model = PrebuiltPC
         fields = '__all__'
+        depth = 1
