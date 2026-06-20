@@ -25,6 +25,11 @@ api.interceptors.request.use((config) => {
     }
   }
 
+  const guestToken = localStorage.getItem('guest_token');
+  if (guestToken) {
+    config.headers['X-GUEST-TOKEN'] = guestToken;
+  }
+
   if (token) {
     config.headers['Authorization'] = `Bearer ${token}`;
   }

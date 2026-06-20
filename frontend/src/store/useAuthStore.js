@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import api from '../api';
+import useCartStore from './useCartStore';
 
 const useAuthStore = create((set) => ({
   user: null,
@@ -14,6 +15,7 @@ const useAuthStore = create((set) => ({
       localStorage.setItem('access_token', response.data.access);
       localStorage.setItem('refresh_token', response.data.refresh);
       set({ isAuthenticated: true, loading: false });
+      useCartStore.getState().claimGuest();
       return true;
     } catch (error) {
       set({ error: error.response?.data?.detail || 'Login failed', loading: false });
@@ -37,6 +39,8 @@ const useAuthStore = create((set) => ({
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
     set({ user: null, isAuthenticated: false });
+    useCartStore.getState().clearCart();
+    useCartStore.getState().fetchCart();
   }
 }));
 
