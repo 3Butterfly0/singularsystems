@@ -29,7 +29,7 @@ const useAuthStore = create((set) => ({
       await api.post('/accounts/signup/', userData);
       set({ loading: false });
       return true;
-    } catch (error) {
+    } catch {
       set({ error: 'Signup failed', loading: false });
       return false;
     }

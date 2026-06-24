@@ -4,22 +4,31 @@ from django.shortcuts import get_object_or_404
 from django.contrib.auth.hashers import make_password, check_password
 from app0.models import (
     BuildSession,
-    intelCPU,
-    amdCPU,
-    intelMotherboard,
-    amdMotherboard,
-    ram,
-    gpu,
-    psu,
-    case,
-    storage,
-    cooler,
+    CPU,
+    Motherboard,
+    Ram,
+    Gpu,
+    Psu,
+    Case,
+    Storage,
+    Cooler,
     Order,
     PrebuiltPC,
 )
-from app0.serializers import BuildSessionSerializer, PrebuiltPCSerializer
-from api.recommendation_service import RecommendationService
+from app0.serializers import (
+    BuildSessionSerializer,
+    PrebuiltPCSerializer,
+    CPUSerializer,
+    MotherboardSerializer,
+    RamSerializer,
+    GpuSerializer,
+    PsuSerializer,
+    CaseSerializer,
+    StorageSerializer,
+    CoolerSerializer,
+)
 from .compatibility import CompatibilityEngine
+from app0.services.ai_assessment import AIAssessmentService
 import secrets
 
 
@@ -64,6 +73,7 @@ class BuildSessionCreateView(views.APIView):
             {"detail": "Not authenticated"}, status=status.HTTP_401_UNAUTHORIZED
         )
 
+
 class BuildSessionDetailView(views.APIView):
     def get(self, request, pk):
         session = get_object_or_404(BuildSession, pk=pk)
@@ -89,150 +99,45 @@ class BuildSessionOptionsView(views.APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        options = []
-        if component_type == "cpu":
-            res = CompatibilityEngine.get_compatible_cpus(session)
-            if session.platform == "intel" or not session.platform:
-                recs = RecommendationService.mark_recommendations(
-                    session, "cpu", res["intel"]
-                )
-                options.extend(
-                    [
-                        {
-                            "id": r["item"].id,
-                            "name": r["item"].name,
-                            "price": r["item"].price,
-                            "type": "intelCPU",
-                            "is_recommended": r["is_recommended"],
-                            "image": request.build_absolute_uri(r["item"].image.url) if r["item"].image else None,
-                            "brand": r["item"].__class__.__name__.replace("intel", "Intel ").replace("amd", "AMD ").title(),
-                        }
-                        for r in recs
-                    ]
-                )
-            if session.platform == "amd" or not session.platform:
-                recs = RecommendationService.mark_recommendations(
-                    session, "cpu", res["amd"]
-                )
-                options.extend(
-                    [
-                        {
-                            "id": r["item"].id,
-                            "name": r["item"].name,
-                            "price": r["item"].price,
-                            "type": "amdCPU",
-                            "is_recommended": r["is_recommended"],
-                            "image": request.build_absolute_uri(r["item"].image.url) if r["item"].image else None,
-                            "brand": r["item"].__class__.__name__.replace("intel", "Intel ").replace("amd", "AMD ").title(),
-                        }
-                        for r in recs
-                    ]
-                )
-
-        elif component_type == "motherboard":
-            res = CompatibilityEngine.get_compatible_motherboards(session)
-            if session.platform == "intel" or not session.platform:
-                recs = RecommendationService.mark_recommendations(
-                    session, "motherboard", res["intel"]
-                )
-                options.extend(
-                    [
-                        {
-                            "id": r["item"].id,
-                            "name": r["item"].name,
-                            "price": r["item"].price,
-                            "type": "intelMotherboard",
-                            "is_recommended": r["is_recommended"],
-                            "image": request.build_absolute_uri(r["item"].image.url) if r["item"].image else None,
-                            "brand": r["item"].__class__.__name__.replace("intel", "Intel ").replace("amd", "AMD ").title(),
-                        }
-                        for r in recs
-                    ]
-                )
-            if session.platform == "amd" or not session.platform:
-                recs = RecommendationService.mark_recommendations(
-                    session, "motherboard", res["amd"]
-                )
-                options.extend(
-                    [
-                        {
-                            "id": r["item"].id,
-                            "name": r["item"].name,
-                            "price": r["item"].price,
-                            "type": "amdMotherboard",
-                            "is_recommended": r["is_recommended"],
-                            "image": request.build_absolute_uri(r["item"].image.url) if r["item"].image else None,
-                            "brand": r["item"].__class__.__name__.replace("intel", "Intel ").replace("amd", "AMD ").title(),
-                        }
-                        for r in recs
-                    ]
-                )
-
-        elif component_type == "ram":
-            qs = CompatibilityEngine.get_compatible_ram(session)
-            recs = RecommendationService.mark_recommendations(session, "ram", qs)
-            options = [
-                {
-                    "id": r["item"].id,
-                    "name": r["item"].name,
-                    "price": r["item"].price,
-                    "type": "ram",
-                    "is_recommended": r["is_recommended"],
-                            "image": request.build_absolute_uri(r["item"].image.url) if r["item"].image else None,
-                            "brand": r["item"].__class__.__name__.replace("intel", "Intel ").replace("amd", "AMD ").title(),
-                }
-                for r in recs
-            ]
-
-        elif component_type == "psu":
-            qs = CompatibilityEngine.get_compatible_psus(session)
-            recs = RecommendationService.mark_recommendations(session, "psu", qs)
-            options = [
-                {
-                    "id": r["item"].id,
-                    "name": r["item"].name,
-                    "price": r["item"].price,
-                    "type": "psu",
-                    "is_recommended": r["is_recommended"],
-                            "image": request.build_absolute_uri(r["item"].image.url) if r["item"].image else None,
-                            "brand": r["item"].__class__.__name__.replace("intel", "Intel ").replace("amd", "AMD ").title(),
-                }
-                for r in recs
-            ]
-
-        elif component_type in ["gpu", "storage", "cooler", "case"]:
-            models_map = {
-                "gpu": gpu,
-                "storage": storage,
-                "cooler": cooler,
-                "case": case,
-            }
-            ModelClass = models_map[component_type]
-            qs = ModelClass.objects.all()
-            recs = RecommendationService.mark_recommendations(
-                session, component_type, qs
-            )
-            options = [
-                {
-                    "id": r["item"].id,
-                    "name": r["item"].name,
-                    "price": r["item"].price,
-                    "type": component_type,
-                    "is_recommended": r["is_recommended"],
-                            "image": request.build_absolute_uri(r["item"].image.url) if r["item"].image else None,
-                            "brand": r["item"].__class__.__name__.replace("intel", "Intel ").replace("amd", "AMD ").title(),
-                }
-                for r in recs
-            ]
-
-        else:
+        qs = CompatibilityEngine.get_options(session, component_type)
+        if qs is None:
             return Response(
                 {"error": "invalid component type"}, status=status.HTTP_400_BAD_REQUEST
             )
 
-        # sort options so that recommended items are at the top
-        options.sort(key=lambda x: x.get("is_recommended", False), reverse=True)
-        return Response(options)
+        from rest_framework.pagination import PageNumberPagination
+        paginator = PageNumberPagination()
+        paginator.page_size = 20
+        paginated_qs = paginator.paginate_queryset(qs, request, view=self)
+
+        serializers_map = {
+            "cpu": CPUSerializer,
+            "motherboard": MotherboardSerializer,
+            "ram": RamSerializer,
+            "gpu": GpuSerializer,
+            "storage": StorageSerializer,
+            "psu": PsuSerializer,
+            "cooler": CoolerSerializer,
+            "case": CaseSerializer,
+        }
+        SerializerClass = serializers_map.get(component_type.lower())
+        if not SerializerClass:
+            return Response(
+                {"error": "invalid component type"}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        serializer = SerializerClass(paginated_qs, many=True, context={'request': request})
+        
+        # Inject stubbed recommendation fields (to be replaced with AI in Phase 5)
+        options_data = []
+        for item in serializer.data:
+            item_copy = dict(item)
+            item_copy["is_recommended"] = False
+            item_copy["recommendation_rank"] = None
+            item_copy["recommendation_reason"] = None
+            options_data.append(item_copy)
+
+        return paginator.get_paginated_response(options_data)
 
 
 class PrebuiltPCListView(views.APIView):
@@ -246,12 +151,25 @@ class PrebuiltPCListView(views.APIView):
         return Response(serializer.data)
 
 
+class PrebuiltPCDetailView(views.APIView):
+    def get(self, request, pk):
+        prebuilt = get_object_or_404(PrebuiltPC, pk=pk)
+        serializer = PrebuiltPCSerializer(prebuilt, context={'request': request})
+        return Response(serializer.data)
+
+
 class BuildSessionSelectionView(views.APIView):
     def patch(self, request, pk):
         session = get_object_or_404(BuildSession, pk=pk)
         if not check_session_auth(request, session):
             return Response(
                 {"error": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED
+            )
+
+        if session.status != "building":
+            return Response(
+                {"error": "Cannot modify selection. Build session is already locked/completed."},
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         comp_type = request.data.get("component_type")
@@ -270,78 +188,40 @@ class BuildSessionSelectionView(views.APIView):
             return Response({"error": "Invalid platform"}, status=status.HTTP_400_BAD_REQUEST)
 
         models_map = {
-            "intelCPU": (intelCPU, "intel_cpu"),
-            "amdCPU": (amdCPU, "amd_cpu"),
-            "intelMotherboard": (intelMotherboard, "intel_motherboard"),
-            "amdMotherboard": (amdMotherboard, "amd_motherboard"),
-            "ram": (ram, "ram"),
-            "gpu": (gpu, "gpu"),
-            "psu": (psu, "psu"),
-            "case": (case, "case"),
-            "storage": (storage, "storage"),
-            "cooler": (cooler, "cooler"),
+            "cpu": CPU,
+            "motherboard": Motherboard,
+            "ram": Ram,
+            "gpu": Gpu,
+            "psu": Psu,
+            "case": Case,
+            "storage": Storage,
+            "cooler": Cooler,
         }
 
-        if comp_type not in models_map:
+        if not comp_type or comp_type.lower() not in models_map:
             return Response(
                 {"error": "Invalid component type"}, status=status.HTTP_400_BAD_REQUEST
             )
 
-        ModelClass, field_name = models_map[comp_type]
+        field_name = comp_type.lower()
+        ModelClass = models_map[field_name]
 
         if action == "remove":
-            setattr(session, field_name, None)
-            session.save()
-            return Response(BuildSessionSerializer(session).data)
+            cleared = CompatibilityEngine.apply_selection(session, field_name, None)
+            res_data = BuildSessionSerializer(session).data
+            res_data["cleared_fields"] = cleared
+            return Response(res_data)
 
         if action == "add":
             comp = get_object_or_404(ModelClass, pk=comp_id)
-            setattr(session, field_name, comp)
+            try:
+                cleared = CompatibilityEngine.apply_selection(session, field_name, comp)
+            except ValueError as e:
+                return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-            # Cascade Clearing: If a foundational part is changed, clear downstream for safety
-            if comp_type in ["intelCPU", "amdCPU"]:
-                session.intel_motherboard = None
-                session.amd_motherboard = None
-                session.ram = None
-                session.platform = "intel" if "intel" in comp_type else "amd"
-            
-            elif comp_type in ["intelMotherboard", "amdMotherboard"]:
-                session.ram = None
-                session.platform = "intel" if "intel" in comp_type else "amd"
-
-            session.save()
-
-            # clear downstream components if they become incompatible
-            errors = CompatibilityEngine.get_validation_errors(session)
-            if errors:
-                changed = False
-                for err in errors:
-                    if "Incompatible Socket" in err:
-                        if comp_type in ["intelCPU", "amdCPU"]:
-                            session.intel_motherboard = None
-                            session.amd_motherboard = None
-                        else:
-                            session.intel_cpu = None
-                            session.amd_cpu = None
-                        changed = True
-                    
-                    if "Incompatible RAM" in err:
-                        if comp_type == "ram":
-                            session.intel_motherboard = None
-                            session.amd_motherboard = None
-                        else:
-                            session.ram = None
-                        changed = True
-                        
-                    if "Insufficient Power" in err:
-                        if comp_type != "psu":
-                            session.psu = None
-                            changed = True
-                
-                if changed:
-                    session.save()
-
-            return Response(BuildSessionSerializer(session).data)
+            res_data = BuildSessionSerializer(session).data
+            res_data["cleared_fields"] = cleared
+            return Response(res_data)
 
         return Response({"error": "Invalid action"}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -353,7 +233,8 @@ class BuildSessionValidateView(views.APIView):
             return Response(
                 {"error": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED
             )
-        errors = CompatibilityEngine.get_validation_errors(session)
+        require_complete = request.query_params.get("require_complete", "false").lower() == "true"
+        errors = CompatibilityEngine.validate(session, require_complete=require_complete)
         is_valid = len(errors) == 0
         return Response({"valid": is_valid, "errors": errors})
 
@@ -371,11 +252,11 @@ class BuildSessionProceedToBuyView(views.APIView):
                 status=status.HTTP_401_UNAUTHORIZED,
             )
 
-        errors = CompatibilityEngine.get_validation_errors(session)
+        errors = CompatibilityEngine.validate(session, require_complete=True)
         if errors:
             return Response(
                 {
-                    "error": "Cannot proceed to buy with incompatible components.",
+                    "error": "Cannot proceed to buy with incomplete or incompatible components.",
                     "validation_errors": errors,
                 },
                 status=status.HTTP_400_BAD_REQUEST,
@@ -401,3 +282,51 @@ class BuildSessionProceedToBuyView(views.APIView):
                 "message": "Proceeding to checkout/buying flow.",
             }
         )
+
+
+class BuildSessionPurposeView(views.APIView):
+    """
+    PATCH /api/builder/session/<id>/purpose/
+    Updates the user's stated purpose for this build (gaming / workstation / video_editing).
+    Used by the frontend PurposeSelector at the start of the builder.
+    """
+    VALID_PURPOSES = {"gaming", "workstation", "video_editing"}
+
+    def patch(self, request, pk):
+        session = get_object_or_404(BuildSession, pk=pk)
+        if not check_session_auth(request, session):
+            return Response({"error": "Unauthorized"}, status=status.HTTP_403_FORBIDDEN)
+
+        purpose = request.data.get("purpose")
+        if purpose not in self.VALID_PURPOSES:
+            return Response(
+                {"error": f"Invalid purpose. Must be one of: {', '.join(sorted(self.VALID_PURPOSES))}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        session.purpose = purpose
+        session.save(update_fields=["purpose"])
+        return Response({"purpose": session.purpose})
+
+
+class BuildSessionAnalyzeView(views.APIView):
+    """
+    POST /api/builder/session/<id>/analyze/
+    Runs the AI Build Assessor against the current session state.
+    Requires at least a CPU and GPU to be selected.
+    Returns a green/yellow/red assessment with headline, analysis, and flagged components.
+    Always returns HTTP 200 — falls back to a green state if Gemini is unavailable.
+    """
+
+    def post(self, request, pk):
+        session = get_object_or_404(
+            BuildSession.objects.select_related(
+                "cpu", "gpu", "motherboard", "ram", "psu", "cooler", "storage", "case"
+            ),
+            pk=pk,
+        )
+        if not check_session_auth(request, session):
+            return Response({"error": "Unauthorized"}, status=status.HTTP_403_FORBIDDEN)
+
+        assessment = AIAssessmentService.assess(session)
+        return Response(assessment)

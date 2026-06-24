@@ -3,7 +3,7 @@ import { persist } from 'zustand/middleware';
 
 const useBuildStore = create(
   persist(
-    (set, get) => ({
+    (set) => ({
       sessionId: null,
       sessionSecret: null,
       currentBuild: null,
