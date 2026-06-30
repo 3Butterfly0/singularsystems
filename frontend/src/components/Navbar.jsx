@@ -1,6 +1,4 @@
-import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { motion } from "framer-motion";
 import { ShoppingCart, User, LogOut, Menu } from "lucide-react";
 import useAuthStore from "../store/useAuthStore";
 import useCartStore from "../store/useCartStore";
@@ -15,7 +13,6 @@ const Navbar = () => {
     { name: "Pre-Built PCs", path: "/prebuilts" },
     { name: "Custom Build", path: "/builder" },
     { name: "About", path: "/about" },
-    { name: "Contact", path: "/contact" },
   ];
 
   return (

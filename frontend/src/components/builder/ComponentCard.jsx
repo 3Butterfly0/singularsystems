@@ -1,53 +1,53 @@
-import { motion } from 'framer-motion';
-import { Plus, Info, Check } from 'lucide-react';
+import { memo } from 'react';
+import { Check, Loader2 } from 'lucide-react';
 
-const ComponentCard = ({ component, onSelect, isSelected, type }) => {
+const ComponentCard = memo(
+  ({ component, onSelect, isSelected, type, selectingId }) => {
+  const isSelectingThis = selectingId === component.id;
+  const isSelectingOther = selectingId && !isSelectingThis;
+
   return (
-    <motion.div 
-      layout
-      className={`glass rounded-2xl overflow-hidden group transition-all ${isSelected ? 'ring-2 ring-primary border-primary/50' : 'hover:border-white/20'}`}
+    <button 
+      onClick={() => { if (!selectingId && !isSelected) onSelect(component); }}
+      disabled={!!selectingId}
+      className={`relative w-full text-left bg-white rounded-xl overflow-hidden group transition-all flex items-center p-3 gap-4 ${
+        isSelected 
+          ? 'ring-2 ring-electric border-transparent shadow-md' 
+          : 'border border-surface/20 hover:border-surface/40 hover:shadow-sm'
+      } ${isSelectingOther ? 'opacity-50 pointer-events-none' : ''}`}
     >
-      <div className="aspect-square bg-white/5 relative overflow-hidden flex items-center justify-center p-8">
+      {isSelectingThis && (
+        <div className="absolute inset-0 bg-white/50 backdrop-blur-[2px] z-10 flex items-center justify-center rounded-xl">
+          <Loader2 className="w-8 h-8 text-electric animate-spin" />
+        </div>
+      )}
+      <div className="w-16 h-16 shrink-0 bg-transparent relative overflow-hidden flex items-center justify-center p-1">
         <img 
           src={component.image || `https://placehold.co/400x400/121212/ffffff?text=${type}`} 
           alt={component.name}
           className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-500"
         />
         {isSelected && (
-          <div className="absolute top-4 right-4 bg-primary text-white p-1 rounded-full">
-            <Check className="w-4 h-4" />
+          <div className="absolute top-0 right-0 bg-electric text-white p-0.5 rounded-full shadow-sm">
+            <Check className="w-3 h-3" />
           </div>
         )}
       </div>
 
-      <div className="p-6">
-        <div className="flex justify-between items-start mb-2">
-          <h4 className="font-bold text-white line-clamp-1 flex-grow pr-2">{component.name}</h4>
-          <span className="text-primary font-bold">₹{component.price?.toLocaleString()}</span>
-        </div>
-        
-        <p className="text-xs text-text-muted mb-6 line-clamp-2">
-          {component.description || `${component.brand} ${type} with high performance and reliability.`}
-        </p>
-
-        <div className="flex gap-2">
-          <button 
-            onClick={() => onSelect(component)}
-            className={`flex-grow py-2 rounded-lg font-bold text-sm transition-all flex items-center justify-center gap-2 ${
-              isSelected 
-              ? 'bg-white/10 text-white cursor-default' 
-              : 'bg-primary text-white hover:bg-primary/90'
-            }`}
-          >
-            {isSelected ? 'Selected' : <><Plus className="w-4 h-4" /> Select</>}
-          </button>
-          <button className="p-2 bg-white/5 hover:bg-white/10 text-text-muted hover:text-white rounded-lg transition-colors">
-            <Info className="w-5 h-5" />
-          </button>
-        </div>
+      <div className="flex-grow min-w-0 pr-4">
+        <h4 className="text-base md:text-lg font-bold text-ink line-clamp-2">{component.name}</h4>
       </div>
-    </motion.div>
+
+      <div className="shrink-0 text-right pr-2">
+        <span className="text-lg font-bold text-ink">₹{component.price?.toLocaleString()}</span>
+      </div>
+    </button>
   );
-};
+  },
+  (prev, next) =>
+    prev.component.id === next.component.id &&
+    prev.isSelected === next.isSelected &&
+    prev.selectingId === next.selectingId
+);
 
 export default ComponentCard;

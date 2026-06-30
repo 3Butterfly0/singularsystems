@@ -3,7 +3,6 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { PageShell, PageHeader } from '@/components/PageShell';
 import api from '@/api';
 import useBuildStore from '@/store/useBuildStore';
-import useAuthStore from '@/store/useAuthStore';
 import useCartStore from '@/store/useCartStore';
 
 const COMPONENT_KEYS = [
@@ -11,7 +10,8 @@ const COMPONENT_KEYS = [
   { key: 'gpu',         label: 'Graphics' },
   { key: 'motherboard', label: 'Motherboard' },
   { key: 'ram',         label: 'Memory' },
-  { key: 'storage',     label: 'Storage' },
+  { key: 'primary_storage', label: 'Primary Storage' },
+  { key: 'secondary_storage', label: 'Secondary Storage' },
   { key: 'cooler',      label: 'Cooling' },
   { key: 'psu',         label: 'Power' },
   { key: 'case',        label: 'Chassis' },
@@ -112,11 +112,11 @@ function PurposeSelector({ sessionId, currentPurpose, onPurposeChange, sessionSe
 
 export default function SummaryPage() {
   const navigate = useNavigate();
-  const { sessionId, currentBuild, clearSession } = useBuildStore();
-  const { isAuthenticated } = useAuthStore();
+  const sessionId = useBuildStore((s) => s.sessionId);
+  const currentBuild = useBuildStore((s) => s.currentBuild);
+  const addItem = useCartStore((s) => s.addItem);
   const [ordering, setOrdering] = useState(false);
   const [orderError, setOrderError] = useState(null);
-  const [orderSuccess, setOrderSuccess] = useState(false);
 
   // AI Assessor state
   const [assessment, setAssessment] = useState(null);
@@ -143,13 +143,27 @@ export default function SummaryPage() {
     }
   }, [sessionId, sessionSecret]);
 
-  // Trigger assessment on mount and re-trigger when purpose changes (debounced 1s)
+  // Track component IDs to trigger a debounced re-evaluation on build changes
+  const componentIdsStr = JSON.stringify([
+    currentBuild?.cpu?.id,
+    currentBuild?.gpu?.id,
+    currentBuild?.motherboard?.id,
+    currentBuild?.ram?.id,
+    currentBuild?.ram_qty,
+    currentBuild?.cooler?.id,
+    currentBuild?.primary_storage?.id,
+    currentBuild?.secondary_storage?.id,
+    currentBuild?.psu?.id,
+    currentBuild?.case?.id,
+  ]);
+
+  // Trigger assessment on mount and re-trigger when purpose or components change (debounced 1s)
   useEffect(() => {
     if (!sessionId) return;
     clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(triggerAssessment, 1000);
     return () => clearTimeout(debounceRef.current);
-  }, [sessionId, purpose, triggerAssessment]);
+  }, [sessionId, purpose, componentIdsStr, triggerAssessment]);
 
   // No active build
   if (!sessionId || !currentBuild) {
@@ -168,7 +182,15 @@ export default function SummaryPage() {
   const lineItems = COMPONENT_KEYS
     .map(({ key, label }) => {
       const comp = currentBuild[key];
-      return comp ? { label, name: comp.name, spec: comp.description || '', price: comp.price } : null;
+      if (!comp) return null;
+      const qty = key === 'ram' ? (currentBuild.ram_qty || 1) : 1;
+      return {
+        key,
+        label,
+        name: qty > 1 ? `${comp.name} (x${qty})` : comp.name,
+        spec: comp.description || '',
+        price: comp.price * qty
+      };
     })
     .filter(Boolean);
 
@@ -177,35 +199,19 @@ export default function SummaryPage() {
   const tax = Math.round(subtotal * 0.08);
   const total = subtotal + assembly + tax;
 
-  const addItem = useCartStore((s) => s.addItem);
-
   const handleCommission = async () => {
     setOrdering(true);
     setOrderError(null);
     try {
       await addItem({ type: 'custom_build', id: sessionId });
       navigate('/cart');
-    } catch (err) {
+    // eslint-disable-next-line no-unused-vars
+    } catch (e) {
       setOrderError('Failed to add build to cart. Please try again.');
     } finally {
       setOrdering(false);
     }
   };
-
-  if (orderSuccess) {
-    return (
-      <PageShell>
-        <div className="px-6 lg:px-10 py-32 text-center">
-          <div className="size-3 bg-electric mx-auto mb-6" />
-          <h1 className="text-5xl font-extrabold tracking-tighter uppercase mb-4">Order Placed</h1>
-          <p className="label text-ink/50 mb-10">Your build has been commissioned. You will receive a confirmation shortly.</p>
-          <Link to="/" className="bg-electric text-primary-foreground px-6 py-4 label hover:bg-ink transition-colors">
-            Return Home →
-          </Link>
-        </div>
-      </PageShell>
-    );
-  }
 
   return (
     <PageShell>
@@ -229,21 +235,35 @@ export default function SummaryPage() {
               <h2 className="label">Components Manifest</h2>
             </div>
             <div className="border-t border-surface/60">
-              {lineItems.map((item) => (
-                <div
-                  key={item.label}
-                  className="grid grid-cols-12 gap-4 py-5 border-b border-surface/60 items-center"
-                >
-                  <div className="col-span-3 label text-ink/50">{item.label}</div>
-                  <div className="col-span-6">
-                    <div className="font-bold uppercase tracking-tight text-sm">{item.name}</div>
-                    {item.spec && <div className="label text-ink/50 mt-1 line-clamp-1">{item.spec}</div>}
+              {lineItems.map((item) => {
+                const isFlagged = assessment?.flagged_components?.some(
+                  (f) => String(f).toLowerCase() === item.key.toLowerCase()
+                );
+                return (
+                  <div
+                    key={item.label}
+                    className={`grid grid-cols-12 gap-4 py-5 border-b border-surface/60 items-center transition-all ${
+                      isFlagged ? 'bg-red-500/5 px-4 -mx-4 border-l-2 border-l-red-500' : ''
+                    }`}
+                  >
+                    <div className="col-span-3 label text-ink/50">{item.label}</div>
+                    <div className="col-span-6">
+                      <div className="font-bold uppercase tracking-tight text-sm flex items-center gap-2">
+                        {item.name}
+                        {isFlagged && (
+                          <span className="text-[9px] bg-red-500/20 text-red-400 border border-red-500/30 px-1.5 py-0.5 rounded font-black tracking-widest uppercase">
+                            Flagged
+                          </span>
+                        )}
+                      </div>
+                      {item.spec && <div className="label text-ink/50 mt-1 line-clamp-1">{item.spec}</div>}
+                    </div>
+                    <div className="col-span-3 text-right font-bold tabular-nums">
+                      &#8377;{item.price?.toLocaleString()}
+                    </div>
                   </div>
-                  <div className="col-span-3 text-right font-bold tabular-nums">
-                    &#8377;{item.price?.toLocaleString()}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 
@@ -274,6 +294,20 @@ export default function SummaryPage() {
 
           {/* AI Build Assessor */}
           <BuildAssessorCard assessment={assessment} loading={assessLoading} />
+
+          {/* Power Summary */}
+          {currentBuild?.estimated_watts > 0 && (
+            <div className="px-6 lg:px-8 py-6 border-b border-surface/60">
+              <div className="label text-ink/50 mb-4">Power Specifications</div>
+              <div className="flex justify-between text-sm">
+                <span className="text-ink/60">Estimated System Draw</span>
+                <span className={`tabular-nums font-medium ${currentBuild?.estimated_watts > (currentBuild?.psu?.wattage || 0) ? 'text-orange-400' : 'text-ink'}`}>
+                  {currentBuild?.estimated_watts}W
+                  {currentBuild?.psu?.wattage ? ` / ${currentBuild.psu.wattage}W (PSU)` : ''}
+                </span>
+              </div>
+            </div>
+          )}
 
           {/* Order summary */}
           <div className="px-6 lg:px-8 py-10 border-b border-surface/60">
